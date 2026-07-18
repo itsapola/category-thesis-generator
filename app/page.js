@@ -60,10 +60,9 @@ export default function Home() {
           </h1>
           <p className="lede">
             Give it a product and its closest competitors. It generates
-            competing category theses — how the product could be framed,
-            what each framing puts you up against, and the tradeoffs of
-            each — as a starting point for the framing conversation, not a
-            replacement for it.
+            competing category theses (how the product could be framed,
+            what each puts you up against, and the tradeoffs of each) as
+            a starting point for the framing conversation.
           </p>
         </section>
 
@@ -175,11 +174,11 @@ export default function Home() {
                     <div className="dd">{t.positionsAgainst}</div>
                   </div>
                   <div className="dfrow">
-                    <div className="dt">What it wins</div>
+                    <div className="dt">Benefits</div>
                     <div className="dd">{t.wins}</div>
                   </div>
                   <div className="dfrow">
-                    <div className="dt">What it costs</div>
+                    <div className="dt">Risks</div>
                     <div className="dd">{t.costs}</div>
                   </div>
                   <div className="dfrow">
