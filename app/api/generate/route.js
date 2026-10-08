@@ -15,6 +15,11 @@ For each thesis, provide:
 - "bestIf": the condition under which this is the right call (1 sentence)
 - "recommended": boolean, true for exactly ONE thesis that is the strongest overall bet given what was provided
 
+WRITING RULES (apply to every field):
+- Never use contrast-by-negation. No "not X but Y", "X, not Y", "isn't X. It's Y", "I'm not selling X, I'm selling Y", or "not just X". State the claim directly and positively.
+- No AI-sounding constructions: no "it's not about", no "in a world where", no rhetorical triplets, no filler words like "truly", "genuinely", "seamless", "powerful", "game-changing".
+- Write the way a senior strategist talks in a board meeting: plain, specific, confident, short sentences.
+
 Respond with ONLY valid JSON in this exact shape, no markdown fences, no preamble:
 {"theses": [{"name": "...", "statement": "...", "positionsAgainst": "...", "wins": "...", "costs": "...", "bestIf": "...", "recommended": false}]}`;
 
@@ -50,43 +55,55 @@ export async function POST(req) {
         : `Primary buyer: not provided — infer a likely one.`,
     ].join("\n");
 
-    const response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 2000,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userMessage }],
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text().catch(() => "");
-      return NextResponse.json(
-        { error: `Anthropic API error (${response.status}): ${errText}` },
-        { status: 502 }
-      );
-    }
-
-    const data = await response.json();
-    const textBlock = (data.content || []).find((b) => b.type === "text");
-    const raw = textBlock ? textBlock.text : "";
-
-    const cleaned = raw.replace(/```json|```/g, "").trim();
-
+    const messages = [{ role: "user", content: userMessage }];
     let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      return NextResponse.json(
-        { error: "Model response wasn't valid JSON. Try again." },
-        { status: 502 }
-      );
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-5",
+          max_tokens: 2000,
+          system: SYSTEM_PROMPT,
+          messages,
+        }),
+      });
+
+      if (!response.ok) {
+        const errText = await response.text().catch(() => "");
+        return NextResponse.json(
+          { error: `Anthropic API error (${response.status}): ${errText}` },
+          { status: 502 }
+        );
+      }
+
+      const data = await response.json();
+      const textBlock = (data.content || []).find((b) => b.type === "text");
+      const raw = textBlock ? textBlock.text : "";
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+
+      try {
+        parsed = JSON.parse(cleaned);
+      } catch {
+        return NextResponse.json(
+          { error: "Model response wasn't valid JSON. Try again." },
+          { status: 502 }
+        );
+      }
+
+      const offenders = findContrastNegation(parsed);
+      if (offenders.length === 0 || attempt === 1) break;
+      messages.push({ role: "assistant", content: raw });
+      messages.push({
+        role: "user",
+        content: `Rewrite your answer. These lines use contrast-by-negation, which the writing rules forbid: ${offenders
+          .map((o) => `"${o}"`)
+          .join("; ")}. State each claim directly. Return the full JSON again in the same shape.`,
+      });
     }
 
     if (!parsed.theses || !Array.isArray(parsed.theses)) {
@@ -103,4 +120,25 @@ export async function POST(req) {
       { status: 500 }
     );
   }
+}
+
+const CONTRAST_PATTERNS = [
+  /\bnot\b[^.;:!?]{0,80}?,?\s*\bbut\b/i,
+  /\bnot just\b/i,
+  /\b(isn't|is not|aren't|wasn't|don't|doesn't)\b[^.!?]{0,80}[.;:]\s*(it's|it is|they're|that's)\b/i,
+  /\bI'm not\b[^.!?]{0,60},\s*I'm\b/i,
+  /,\s*not\s+[a-z][^.,;]{0,40}[.;]/i,
+  /\b(don't|doesn't|isn't|aren't|wasn't)\b[^.!?]{0,60},\s*(they|it|we|you|he|she)\b/i,
+];
+
+function findContrastNegation(obj) {
+  const hits = [];
+  const walk = (v) => {
+    if (typeof v === "string") {
+      if (CONTRAST_PATTERNS.some((re) => re.test(v))) hits.push(v);
+    } else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(obj);
+  return hits;
 }
