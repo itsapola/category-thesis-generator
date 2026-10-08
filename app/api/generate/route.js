@@ -20,7 +20,7 @@ WRITING RULES (apply to every field):
 - No AI-sounding constructions: no "it's not about", no "in a world where", no rhetorical triplets, no filler words like "truly", "genuinely", "seamless", "powerful", "game-changing".
 - Write the way a senior strategist talks in a board meeting: plain, specific, confident, short sentences.
 
-Respond with ONLY valid JSON in this exact shape, no markdown fences, no preamble:
+Respond with ONLY valid JSON in this exact shape, no markdown fences, no preamble, no text before or after the JSON object. Never put raw double quotes inside a string value: use single quotes instead.
 {"theses": [{"name": "...", "statement": "...", "positionsAgainst": "...", "wins": "...", "costs": "...", "bestIf": "...", "recommended": false}]}`;
 
 export async function POST(req) {
@@ -86,9 +86,9 @@ export async function POST(req) {
       const raw = textBlock ? textBlock.text : "";
       const cleaned = raw.replace(/```json|```/g, "").trim();
 
-      try {
-        parsed = JSON.parse(cleaned);
-      } catch {
+      parsed = parseLoose(cleaned);
+      if (!parsed) {
+        console.error("Unparseable model output:", raw);
         return NextResponse.json(
           { error: "Model response wasn't valid JSON. Try again." },
           { status: 502 }
@@ -141,4 +141,18 @@ function findContrastNegation(obj) {
   };
   walk(obj);
   return hits;
+}
+
+function parseLoose(text) {
+  try {
+    return JSON.parse(text);
+  } catch {}
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return null;
+  }
 }
