@@ -196,8 +196,7 @@ export default function Home() {
         <svg className="orbit-mark" viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="16.5" fill="none" stroke="var(--persimmon)" strokeWidth="0.5" opacity="0.45" /><g stroke="var(--persimmon)" strokeWidth="0.6"><line x1="20" y1="2.5" x2="20" y2="6" /><line x1="20" y1="34" x2="20" y2="37.5" /><line x1="2.5" y1="20" x2="6" y2="20" /><line x1="34" y1="20" x2="37.5" y2="20" /><line x1="8" y1="8" x2="10.5" y2="10.5" /><line x1="29.5" y1="29.5" x2="32" y2="32" /><line x1="32" y1="8" x2="29.5" y2="10.5" /><line x1="10.5" y1="29.5" x2="8" y2="32" /></g><ellipse cx="20" cy="20" rx="18" ry="7" transform="rotate(-20 20 20)" /><ellipse cx="20" cy="20" rx="18" ry="7" transform="rotate(40 20 20)" /><circle cx="20" cy="20" r="2.5" /></svg>
         <span>Ashley Pola © 2026</span>
         <span>
-          Homepage content only. Strategic conclusions require human
-          review.
+          Draft framings, not final positioning. Pressure-test with your team.
         </span>
       </footer>
     </>
